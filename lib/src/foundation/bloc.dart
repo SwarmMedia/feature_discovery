@@ -2,26 +2,24 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'persistence_provider.dart';
 
 class BlocProvider extends StatelessWidget {
   final Widget child;
-  final bool recordInSharedPrefs;
-  final String sharedPrefsPrefix;
+  final PersistenceProvider persistenceProvider;
 
   const BlocProvider({
-    Key key,
-    @required this.child,
-    @required this.recordInSharedPrefs,
-    @required this.sharedPrefsPrefix,
+    Key? key,
+    required this.child,
+    required this.persistenceProvider,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) => Provider<Bloc>(
         child: child,
         create: (BuildContext context) => Bloc._(
-          recordInSharedPrefs: recordInSharedPrefs,
-          sharedPrefsPrefix: sharedPrefsPrefix ?? '',
+          persistenceProvider: persistenceProvider,
         ),
         dispose: (BuildContext context, Bloc bloc) => bloc._dispose(),
       );
@@ -40,12 +38,10 @@ class Bloc {
     }
   }
 
-  final bool recordInSharedPrefs;
-  final String sharedPrefsPrefix;
+  final PersistenceProvider persistenceProvider;
 
   Bloc._({
-    @required this.recordInSharedPrefs,
-    @required this.sharedPrefsPrefix,
+    required this.persistenceProvider,
   });
 
   /// This [StreamController] allows to send events of type [EventType].
@@ -58,24 +54,24 @@ class Bloc {
   Sink<EventType> get _eventsIn => _eventsController.sink;
 
   /// The steps consist of the feature ids of the features to be discovered.
-  List<String> _steps;
+  List<String?>? _steps;
 
   /// Steps that have been previously completed.
-  Set<String> _stepsToIgnore;
+  Set<String?>? _stepsToIgnore;
 
-  int _activeStepIndex;
+  int? _activeStepIndex;
 
-  String get activeFeatureId => _steps == null ||
+  String? get activeFeatureId => _steps == null ||
           _activeStepIndex == null ||
-          _activeStepIndex >= _steps.length ||
-          _activeStepIndex < 0
+          _activeStepIndex! >= _steps!.length ||
+          _activeStepIndex! < 0
       ? null
-      : _steps[_activeStepIndex];
+      : _steps![_activeStepIndex!];
 
   /// This is used to determine if the active feature is already shown by
   /// another [DescribedFeatureOverlay] as [DescribedFeatureOverlay.allowShowingDuplicate]
   /// requires this.
-  int _activeOverlays;
+  late int _activeOverlays;
 
   int get activeOverlays => _activeOverlays;
 
@@ -105,12 +101,12 @@ class Bloc {
   }
 
   void discoverFeatures(Iterable<String> steps) async {
-    assert(steps != null && steps.isNotEmpty,
+    assert(steps.isNotEmpty,
         'You need to pass at least one step to [FeatureDiscovery.discoverFeatures].');
 
-    _steps = steps;
+    _steps = steps as List<String?>?;
     _stepsToIgnore = await _alreadyCompletedSteps;
-    _steps = _steps?.where((s) => !_stepsToIgnore.contains(s))?.toList() ?? [];
+    _steps = _steps?.where((s) => !_stepsToIgnore?.contains(s))?.toList() ?? [];
     _activeStepIndex = -1;
 
     await _nextStep();
@@ -125,10 +121,10 @@ class Bloc {
 
   Future<void> _nextStep() async {
     if (activeFeatureId != null) unawaited(_saveCompletionOf(activeFeatureId));
-    _activeStepIndex++;
+    _activeStepIndex = _activeStepIndex! + 1;
     _activeOverlays = 0;
 
-    if (_activeStepIndex < _steps.length) {
+    if (_activeStepIndex! < _steps!.length) {
       _eventsIn.add(EventType.open);
     } else {
       // The last step has been completed, so we need to clear the steps.
@@ -146,36 +142,24 @@ class Bloc {
   }
 
   /// Will mark [featureId] as completed in the Shared Preferences.
-  Future<void> _saveCompletionOf(String featureId) async {
-    if (!recordInSharedPrefs) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('$sharedPrefsPrefix$featureId', true);
+  Future<void> _saveCompletionOf(String? featureId) async {
+    await persistenceProvider.completeStep(featureId);
     _stepsToIgnore?.add(featureId);
   }
 
-  Future<Set<String>> get _alreadyCompletedSteps async {
-    if (!recordInSharedPrefs) return {};
-    final prefs = await SharedPreferences.getInstance();
-    return _steps?.where((s) => prefs.getBool('$sharedPrefsPrefix$s') == true)?.toSet() ?? {};
-  }
+  Future<Set<String?>> get _alreadyCompletedSteps =>
+      persistenceProvider.completedSteps(_steps);
 
   /// Returns true iff this step has been previously
   /// recorded as completed in the Shared Preferences
   /// with [saveCompletionOf].
   Future<bool> hasPreviouslyCompleted(String featureId) async {
-    if (!recordInSharedPrefs) return false;
     _stepsToIgnore ??= await _alreadyCompletedSteps;
-    return _stepsToIgnore.contains(featureId);
+    return _stepsToIgnore!.contains(featureId);
   }
 
-  Future<void> clearPreferences(Iterable<String> steps) async {
-    final prefs = await SharedPreferences.getInstance();
-    await Future.wait(
-      steps.map<Future>(
-        (featureId) => prefs.remove('$sharedPrefsPrefix$featureId'),
-      ),
-    );
-  }
+  Future<void> clearPreferences(Iterable<String> steps) async =>
+      persistenceProvider.clearSteps(steps);
 }
 
 /// These are the different types of the event that [Bloc]
