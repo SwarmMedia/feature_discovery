@@ -99,12 +99,11 @@ class Bloc {
     _eventsController.close();
   }
 
-  void discoverFeatures(Iterable<String> steps) async {
+  void discoverFeatures(List<String> steps) async {
     assert(steps.isNotEmpty,
         'You need to pass at least one step to [FeatureDiscovery.discoverFeatures].');
 
-    // TODO: Why not just accept a List<String> as function parameter?
-    _steps = steps as List<String?>;
+    _steps = steps;
     _stepsToIgnore = await _alreadyCompletedSteps;
     _steps = _steps.where((s) => !_stepsToIgnore!.contains(s)).toList();
     _activeStepIndex = -1;

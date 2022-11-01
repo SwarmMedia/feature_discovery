@@ -237,7 +237,7 @@ class _ContentState extends State<Content> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FeatureDiscovery.discoverFeatures(
         context,
-        const <String>{
+        const [
           feature7,
           feature1,
           feature2,
@@ -245,7 +245,7 @@ class _ContentState extends State<Content> {
           feature4,
           feature6,
           feature5
-        },
+        ],
       );
     });
     super.initState();
@@ -332,14 +332,14 @@ class _ContentState extends State<Content> {
                       onPressed: () {
                         FeatureDiscovery.discoverFeatures(
                           context,
-                          const <String>{
+                          const [
                             feature1,
                             feature2,
                             feature3,
                             feature4,
                             feature6,
                             feature5
-                          },
+                          ],
                         );
                       },
                       child: const Text('Start Feature Discovery'),
