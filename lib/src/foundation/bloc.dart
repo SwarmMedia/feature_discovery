@@ -54,19 +54,18 @@ class Bloc {
   Sink<EventType> get _eventsIn => _eventsController.sink;
 
   /// The steps consist of the feature ids of the features to be discovered.
-  List<String?>? _steps;
+  List<String?> _steps = [];
 
   /// Steps that have been previously completed.
   Set<String?>? _stepsToIgnore;
 
   int? _activeStepIndex;
 
-  String? get activeFeatureId => _steps == null ||
-          _activeStepIndex == null ||
-          _activeStepIndex! >= _steps!.length ||
+  String? get activeFeatureId => _activeStepIndex == null ||
+          _activeStepIndex! >= _steps.length ||
           _activeStepIndex! < 0
       ? null
-      : _steps![_activeStepIndex!];
+      : _steps[_activeStepIndex!];
 
   /// This is used to determine if the active feature is already shown by
   /// another [DescribedFeatureOverlay] as [DescribedFeatureOverlay.allowShowingDuplicate]
@@ -104,16 +103,16 @@ class Bloc {
     assert(steps.isNotEmpty,
         'You need to pass at least one step to [FeatureDiscovery.discoverFeatures].');
 
-    _steps = steps as List<String?>?;
+    // TODO: Why not just accept a List<String> as function parameter?
+    _steps = steps as List<String?>;
     _stepsToIgnore = await _alreadyCompletedSteps;
-    _steps = _steps!.where((s) => !_stepsToIgnore!.contains(s)).toList();
+    _steps = _steps.where((s) => !_stepsToIgnore!.contains(s)).toList();
     _activeStepIndex = -1;
 
     await _nextStep();
   }
 
   Future<void> completeStep() async {
-    if (_steps == null) return;
     // This will ignore the [onComplete] function of all overlays.
     _eventsIn.add(EventType.complete);
     await _nextStep();
@@ -124,11 +123,11 @@ class Bloc {
     _activeStepIndex = _activeStepIndex! + 1;
     _activeOverlays = 0;
 
-    if (_activeStepIndex! < _steps!.length) {
+    if (_activeStepIndex! < _steps.length) {
       _eventsIn.add(EventType.open);
     } else {
       // The last step has been completed, so we need to clear the steps.
-      _steps = null;
+      _steps.clear();
       _activeStepIndex = null;
     }
   }
@@ -136,7 +135,7 @@ class Bloc {
   void dismiss() {
     // This will ignore the [onDismiss] function of all overlays.
     _eventsIn.add(EventType.dismiss);
-    _steps = null;
+    _steps.clear();
     _activeStepIndex = null;
     _activeOverlays = 0;
   }
