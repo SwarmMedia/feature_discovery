@@ -59,13 +59,14 @@ class Bloc {
   /// Steps that have been previously completed.
   Set<String?>? _stepsToIgnore;
 
-  int? _activeStepIndex;
+  int _activeStepIndex = -1;
 
-  String? get activeFeatureId => _activeStepIndex == null ||
-          _activeStepIndex! >= _steps.length ||
-          _activeStepIndex! < 0
-      ? null
-      : _steps[_activeStepIndex!];
+  String? get activeFeatureId {
+    if (_activeStepIndex < 0 || _activeStepIndex >= _steps.length) {
+      return null;
+    }
+    return _steps[_activeStepIndex];
+  }
 
   /// This is used to determine if the active feature is already shown by
   /// another [DescribedFeatureOverlay] as [DescribedFeatureOverlay.allowShowingDuplicate]
@@ -119,15 +120,15 @@ class Bloc {
 
   Future<void> _nextStep() async {
     if (activeFeatureId != null) unawaited(_saveCompletionOf(activeFeatureId));
-    _activeStepIndex = _activeStepIndex! + 1;
+    _activeStepIndex += 1;
     _activeOverlays = 0;
 
-    if (_activeStepIndex! < _steps.length) {
+    if (_activeStepIndex < _steps.length) {
       _eventsIn.add(EventType.open);
     } else {
       // The last step has been completed, so we need to clear the steps.
       _steps.clear();
-      _activeStepIndex = null;
+      _activeStepIndex = -1;
     }
   }
 
@@ -135,7 +136,7 @@ class Bloc {
     // This will ignore the [onDismiss] function of all overlays.
     _eventsIn.add(EventType.dismiss);
     _steps.clear();
-    _activeStepIndex = null;
+    _activeStepIndex = -1;
     _activeOverlays = 0;
   }
 
