@@ -90,7 +90,10 @@ class _OverlayBuilderState extends State<OverlayBuilder> {
       builder: widget.overlayBuilder as Widget Function(BuildContext),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Overlay.of(context)!.insert(overlayEntry!);
+      final _overlayEntry = overlayEntry;
+      if (_overlayEntry != null) {
+        Overlay.of(context)?.insert(_overlayEntry);
+      }
     });
   }
 
