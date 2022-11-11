@@ -98,7 +98,7 @@ class _OverlayBuilderState extends State<OverlayBuilder> {
   }
 
   void hideOverlay() {
-    overlayEntry!.remove();
+    overlayEntry?.remove();
     overlayEntry = null;
   }
 
